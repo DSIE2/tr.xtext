@@ -1,0 +1,195 @@
+grammar org.upct.tr.TR with org.eclipse.xtext.common.Terminals
+
+generate tR "http://www.upct.org/tr/TR"
+
+Model:
+	program+=TRprogram*;
+	
+TRprogram:
+	('enums'
+	 (enums+=Enums)*
+	'end')? &
+	'percepts' 
+	 (percepts+=Percepts)+
+	'end' &
+	('durative'
+	 (durative+=Durative)*
+	'end')? &
+	('discrete'
+	 (discrete+=Discrete)*
+	'end')? &
+	('beliefs'
+	 (beliefs+=Beliefs)*
+	'end')? &
+	('vars'
+	 (vars+=Vars)*
+	'end')? &
+	'goals'
+	(goals+=Goals)+
+	'end' &
+	('messages'
+	 (msgs+=Messages)*
+	 'end')?
+	 &
+	('procedures'
+	 (proc+=Procedures)*
+	 'end')?
+	 ;
+Enums:
+	name=ID '::=' (r+=EnumElem ('|' rr+=EnumElem)*)
+;
+
+EnumElem:
+	name=ID
+;
+
+FQN: ID ("." ID)+ ;
+
+Condition: 
+	(sc=Simple_condition (operators+=Operator conds+=Simple_condition)*) 
+;
+
+Operator:
+	value=('and'|'or')
+;
+
+Simple_condition: predication=Predication | ('not' predication=Predication);
+
+PerBel: Percepts | Beliefs;
+VarPar:  Vars | Param | LocalVars;
+SuperVarPar: 
+	v=[VarPar] | e=[EnumElem|FQN] 
+;
+
+SuperValue:	Value
+			|
+			lv=[LocalVars]
+;
+
+PerVarParam: (p=[PerBel] '(' (p2+=SuperValue (',' p2+=SuperValue)*)? ')')
+			 |
+			 v=SuperVarPar
+;
+
+Predication:
+	pv=PerVarParam | left=Arith_term condition=('<'|'>'|'='|'<='|'>='|'!=') right=Arith_term | {Predication} 'true'
+;
+
+Arith_term: {Arith_term}
+	(number=INT | double=DOUBLE | pv=PerVarParam)
+	(operator=('+'|'-'|'*'|'/'|'rem'|'div') arit=Arith_term)?
+;
+
+Procedures:
+	name=ID ':''('((type=Type)(',' types+=Type)*)?')'
+	pr=[Procedures] '('(params+=Param (';' params+=Param)*)?')' '->>'
+	p2+=Plusplus (';' p2+=Plusplus)*
+;
+
+SuperValue2:
+	Value | lp=[Param]
+;
+
+RemFor:
+	('remember' | 'forget') b=[Beliefs] '(' (p2+=SuperValue2 (',' p2+=SuperValue2)*)? ')' ('for' Number)? | {RemFor} 'forgetAll' 
+;
+
+Plusplus: {Plusplus}
+	rf+=RemFor | (v+=[Vars]':=' at=Arith_term) | STRING 'to' Agent | (v+=[Vars]'+:=' at=Arith_term) | (v+=[Vars]'-:=' at=Arith_term) | 
+	(myp=[Procedures] '(' (params+=Arith_term (',' params+=Arith_term)*)? ')')	
+;
+
+Agent: {Agent}
+	STRING | p2=[Param]
+;
+
+Rule: 
+	condition=Condition (('while' (cw=Condition | Number))? & ('until' (cu=Condition | Number))?) arrow='->' ar=ActionRule (ts=TimedSeq)? ('++' p2+=Plusplus (';' p2+=Plusplus)*)? 
+;
+
+TimedSeq:
+	('for' Number ';' ar3+=DurActionRule 'for' Number)+ 
+;
+
+Actions: 
+	Durative | Discrete | Goals 
+;
+
+ActionRule: {ActionRule}
+(((mya=[Actions] '(' (params+=Arith_term (',' params+=Arith_term)*)? ')') ('wait' INT'^'INT)? )|  '('')')
+;
+
+DurActionRule: 
+mya=[Durative] '(' (params+=Arith_term (',' params+=Arith_term)*)? ')'	
+;
+
+Goals:
+	name=ID ':''('((types+=Type)(',' types+=Type)*)?')'
+	go=[Goals] '('(params+=Param (',' params+=Param)*)?')'
+	'{'
+	(localVars+=LocalVars)*
+	rules+=Rule*
+	'}'
+;
+
+Param: name=ID 
+
+;
+
+Percepts:
+	name=ID ':' '('((types+=Type)(',' types+=Type)*)?')' 
+;
+Beliefs:
+	name=ID ':' '('((types+=Type)(',' types+=Type)*)?')' 
+;
+Durative:
+	name=ID ':' '('((types+=Type)(',' types+=Type)*)?')'
+;
+Discrete:
+	name=ID ':' '('((types+=Type)(',' types+=Type)*)?')'
+	;
+Vars:
+	Type name=ID (':=' value=Primitive_Value)? 
+;
+
+LocalVars:
+	Type  name=ID
+;
+Messages:
+	// from, msg, params
+	"handle" '('p1=MsgParam ',' p2=MsgParam ',' p3=MsgParam2')' ('when' c=Condition)? ('->' (p4+=Plusplus (';' p4+=Plusplus)*))?
+;
+
+MsgParam:
+	{MsgParam} ( '_' | STRING )
+;
+
+MsgParam2:
+	{MsgParam2} (m=Param | '_')
+;
+
+Primitive_Type:
+	{Primitive_Type}
+		('int' | 'double' | 'string')
+;
+
+Type: Primitive_Type 
+	  |
+	  enumerate=[Enums]
+;
+		
+Value:	value=[EnumElem|FQN]
+		|
+		{Value} Primitive_Value			
+;
+
+Primitive_Value:
+	INT | DOUBLE |STRING |'_'
+;
+terminal DOUBLE:
+    INT '.' INT
+;
+
+Number:
+	DOUBLE | INT
+;

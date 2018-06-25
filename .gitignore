@@ -1,0 +1,13 @@
+org.upct.tr/.launch
+org.upct.tr/.settings
+org.upct.tr/bin
+org.upct.tr/model
+org.upct.tr/src-gen
+org.upct.tr/xtend-gen
+org.upct.tr/.classpath
+org.upct.tr/.project
+org.upct.tr.tests/.settings
+org.upct.tr.tests/src-gen
+org.upct.tr.tests/xtend-gen
+org.upct.tr.tests/.classpath
+org.upct.tr.tests/.project
